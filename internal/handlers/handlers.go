@@ -4,7 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"forum/internal/models"
 
@@ -21,14 +24,70 @@ func NewHandler(db *sql.DB) *Handler {
 
 // Home displays the homepage with all posts
 func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
+	// Debug information
+	dir, _ := os.Getwd()
+	log.Printf("Current working directory: %s", dir)
+
+	// Get the project root directory (one level up from cmd)
+	projectRoot := filepath.Join(dir, "..")
+
+	// Use absolute paths for templates
+	baseTemplate := filepath.Join(projectRoot, "web", "templates", "base.html")
+	homeTemplate := filepath.Join(projectRoot, "web", "templates", "home.html")
+
+	if _, err := os.Stat(baseTemplate); os.IsNotExist(err) {
+		log.Printf("Template file does not exist at: %s", baseTemplate)
+	} else {
+		log.Printf("Template file found at: %s", baseTemplate)
+	}
+
+	// Get posts
 	posts, err := models.GetAllPosts(h.DB)
 	if err != nil {
+		log.Printf("Error fetching posts: %v", err)
 		http.Error(w, "Failed to fetch posts", http.StatusInternalServerError)
 		return
 	}
 
-	tmpl := template.Must(template.ParseFiles("web/templates/home.html"))
-	tmpl.Execute(w, posts)
+	// Get categories for the filter
+	categories, err := models.GetAllCategories(h.DB)
+	if err != nil {
+		log.Printf("Error fetching categories: %v", err)
+		http.Error(w, "Failed to fetch categories", http.StatusInternalServerError)
+		return
+	}
+
+	// Get current user if logged in
+	var user *models.User
+	if cookie, err := r.Cookie("session"); err == nil {
+		user, _ = models.GetUserBySession(h.DB, cookie.Value)
+	}
+
+	// Prepare template data
+	data := struct {
+		Posts      []models.Post
+		Categories []models.Category
+		User       *models.User
+	}{
+		Posts:      posts,
+		Categories: categories,
+		User:       user,
+	}
+
+	// Parse and execute template
+	tmpl, err := template.ParseFiles(baseTemplate, homeTemplate)
+	if err != nil {
+		log.Printf("Template parsing error: %v", err)
+		http.Error(w, fmt.Sprintf("Template error: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	err = tmpl.ExecuteTemplate(w, "base", data)
+	if err != nil {
+		log.Printf("Template execution error: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Register handles user registration

@@ -1,0 +1,49 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{block "title" .}}Forum{{end}}</title>
+    <style>
+        .post {
+            border: 1px solid #ddd;
+            margin: 10px;
+            padding: 15px;
+        }
+        .nav {
+            background: #f8f9fa;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .categories {
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+        .category {
+            background: #e9ecef;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-right: 5px;
+        }
+        .interactions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        {{if .User}}
+            Welcome, {{.User.Username}} | 
+            <a href="/post/create">Create Post</a> | 
+            <a href="/logout">Logout</a>
+        {{else}}
+            <a href="/login">Login</a> | 
+            <a href="/register">Register</a>
+        {{end}}
+    </div>
+
+    {{block "content" .}}{{end}}
+</body>
+</html>
+{{end}} 
